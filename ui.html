@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      background: #ffffff;
+      color: #1a1a1a;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding-bottom: 72px;
+    }
+
+    body::-webkit-scrollbar,
+    .rank-list::-webkit-scrollbar,
+    #searchResults::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    body::-webkit-scrollbar-thumb,
+    .rank-list::-webkit-scrollbar-thumb,
+    #searchResults::-webkit-scrollbar-thumb {
+      background: #d4d4d4;
+      border-radius: 999px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .main-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    .section:first-child {
+      padding-top: 16px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #bcbcbc;
+    }
+
+    .section-note {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #999999;
+    }
+
+    .form-group,
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #bcbcbc;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-spinner {
+      display: none;
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e0e0e0;
+      border-top-color: #999;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    .input-wrap.loading .input-spinner {
+      display: block;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #eeeeee;
+      border-radius: 12px;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      appearance: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    input::placeholder {
+      color: #b0b0b0;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #cccccc;
+      background: #f0f0f0;
+    }
+
+    .input-hint {
+      font-size: 11px;
+      line-height: 1.45;
+      color: #999999;
+    }
+
+    #searchResults,
+    #countryDropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 30;
+      display: none;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      border: 1px solid #eeeeee;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    #searchResults .rank-list,
+    #countryDropdown .rank-list {
+      max-height: none;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sticky-filters {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #ffffff;
+      padding: 0 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .device-options {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .device-btn,
+    .rank-tab {
+      flex: 1;
+      min-height: 34px;
+      border: 1px solid #eeeeee;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+
+    .device-btn {
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: #f5f5f5;
+      color: #1a1a1a;
+    }
+
+    .device-btn:hover {
+      background: #ebebeb;
+    }
+
+    .device-btn.active {
+      border-color: #1a1a1a;
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
+    .rank-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .rank-tab {
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      border-color: #eeeeee;
+    }
+
+    .rank-tab:hover {
+      background: #ebebeb;
+    }
+
+    .rank-tab.active {
+      border-color: #1a1a1a;
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
+    .rank-section {
+      display: none;
+      flex-direction: column;
+    }
+
+    .rank-section.show {
+      display: flex;
+    }
+
+    .rank-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    .rank-toolbar-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #bcbcbc;
+    }
+
+    .rank-toolbar-note {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #999999;
+    }
+
+    .rank-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 16px;
+    }
+
+    .rank-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .rank-item:hover {
+      background: #f5f5f5;
+    }
+
+    .rank-item.checked {
+      background: #f0f0f0;
+    }
+
+    .rank-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      object-fit: cover;
+      background: #f0f0f0;
+    }
+
+    .rank-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .rank-name {
+      font-weight: 600;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #1a1a1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rank-developer {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #999999;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rank-divider {
+      height: 1px;
+      background: #f0f0f0;
+      margin: 2px 0;
+    }
+
+    .rank-item input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .checkmark {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      border: 1.5px solid #d9d9d9;
+      border-radius: 999px;
+      background: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: transparent;
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 700;
+      transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+
+    .rank-item.checked .checkmark {
+      border-color: #1a1a1a;
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 16px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      background: #ffffff;
+      z-index: 20;
+    }
+
+    .batch-import-btn {
+      width: 100%;
+      min-height: 42px;
+      padding: 11px 16px;
+      border: none;
+      border-radius: 999px;
+      background: #1a1a1a;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .batch-import-btn .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .batch-import-btn:hover {
+      opacity: 0.92;
+    }
+
+    .batch-import-btn:disabled {
+      background: #e8e8e8;
+      color: #aaaaaa;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    .status {
+      display: none;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.45;
+      margin: 0 16px;
+    }
+
+    .status.loading {
+      display: block;
+      background: #fff8e6;
+      color: #8a6d00;
+    }
+
+    .status.success {
+      display: block;
+      background: #edf8ef;
+      color: #1a6d39;
+    }
+
+    .status.error {
+      display: block;
+      background: #fdeaec;
+      color: #a33a4c;
+    }
+
+    .status.warning {
+      display: block;
+      background: #fff3e8;
+      color: #9a5a12;
+    }
+
+    .empty-state {
+      padding: 24px 16px;
+      border: 1px dashed #e6e6e6;
+      border-radius: 12px;
+      background: #fafafa;
+      color: #999999;
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="main-card">
+      <div class="section">
+        <div class="form-group">
+          <label>应用名称</label>
+          <div class="input-wrap" id="searchWrap">
+            <input type="text" id="appName" placeholder="例如: Instagram, 微信, LINE">
+            <div class="input-spinner"></div>
+            <div class="rank-section" id="searchResults" style="display: none;">
+              <div class="rank-list" id="searchResultsList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>国家/地区</label>
+          <div class="input-wrap">
+            <input type="text" id="countryInput" value="🇺🇸  美国" readonly placeholder="选择国家/地区">
+            <input type="hidden" id="country" value="US">
+            <div class="rank-section" id="countryDropdown" style="display: none;">
+              <div class="rank-list" id="countryList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>设备类型</label>
+            <div class="device-options">
+              <button type="button" class="device-btn active" data-device="iphone">iPhone</button>
+              <button type="button" class="device-btn" data-device="ipad">iPad</button>
+              <button type="button" class="device-btn" data-device="all">全部</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="rank-section" id="rankSection">
+        <div class="sticky-filters">
+          <div class="filter-group">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <label>竞品榜单</label>
+            </div>
+            <div class="device-options rank-tabs">
+              <button type="button" class="rank-tab active" data-rank="free">免费</button>
+              <button type="button" class="rank-tab" data-rank="paid">付费</button>
+              <button type="button" class="rank-tab" data-rank="grossing">畅销</button>
+            </div>
+          </div>
+        </div>
+        <div class="rank-list" id="rankList">
+        </div>
+      </section>
+
+      <div class="status" id="status"></div>
+    </section>
+
+    <div class="bottom-bar">
+      <button class="batch-import-btn" id="batchImportBtn" disabled>导入所选</button>
+    </div>
+  </div>
+<script>
+    console.log('[UI] Script started loading...');
+
+    try {
+      console.log('[UI] Initializing variables...');
+      let selectedDevice = 'iphone';
+      let selectedApps = new Set();
+      let selectedRank = 'free';
+      let rankApps = [];
+      let searchedApp = null;
+      console.log('[UI] Variables initialized');
+
+      // Country custom dropdown
+      const countries = [
+        { code: 'US', label: '🇺🇸  美国' },
+        { code: 'CN', label: '🇨🇳  中国' },
+        { code: 'JP', label: '🇯🇵  日本' },
+        { code: 'KR', label: '🇰🇷  韩国' },
+        { code: 'GB', label: '🇬🇧  英国' },
+        { code: 'HK', label: '🇭🇰  香港' },
+      ];
+      const countryInput = document.getElementById('countryInput');
+      countryInput.value = '🇺🇸  美国';
+      const countryHidden = document.getElementById('country');
+      const countryDropdown = document.getElementById('countryDropdown');
+      const countryList = document.getElementById('countryList');
+
+      function renderCountryList() {
+        countryList.innerHTML = '';
+        countries.forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'rank-item' + (c.code === countryHidden.value ? ' checked' : '');
+          item.innerHTML = `<div class="rank-info"><div class="rank-name">${c.label}</div></div>`;
+          item.addEventListener('click', () => {
+            countryHidden.value = c.code;
+            countryInput.value = c.label;
+            countryDropdown.style.display = 'none';
+            if (appNameInput.value.trim()) performSearch();
+          });
+          countryList.appendChild(item);
+        });
+      }
+      renderCountryList();
+
+      countryInput.addEventListener('click', () => {
+        countryDropdown.style.display = countryDropdown.style.display === 'none' ? 'block' : 'none';
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!countryDropdown.contains(e.target) && e.target !== countryInput) {
+          countryDropdown.style.display = 'none';
+        }
+      });
+
+      // Device selection
+      console.log('[UI] Setting up device buttons...');
+      document.querySelectorAll('.device-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          console.log('[UI] Device button clicked:', btn.dataset.device);
+          document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedDevice = btn.dataset.device;
+        });
+      });
+      console.log('[UI] Device buttons setup complete');
+
+      // Real-time search on input
+      console.log('[UI] Setting up real-time search...');
+      let searchTimeout;
+      const appNameInput = document.getElementById('appName');
+      const countrySelect = document.getElementById('country');
+
+      function performSearch() {
+        const appName = appNameInput.value.trim();
+        const country = countrySelect.value;
+
+        if (!appName || appName.length < 2) {
+          document.getElementById('searchResults').style.display = 'none';
+          document.getElementById('rankSection').classList.remove('show');
+          document.getElementById('searchWrap').classList.remove('loading');
+          return;
+        }
+
+        document.getElementById('searchWrap').classList.add('loading');
+
+        parent.postMessage({
+          pluginMessage: {
+            type: 'search-app',
+            appName,
+            country
+          }
+        }, '*');
+      }
+
+      appNameInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300);
+      });
+
+      // Show search results when input is focused and has value
+      appNameInput.addEventListener('focus', () => {
+        if (appNameInput.value.trim().length >= 2) {
+          const searchResults = document.getElementById('searchResults');
+          const resultsList = document.getElementById('searchResultsList');
+          if (resultsList.children.length > 0) {
+            searchResults.style.display = 'block';
+          }
+        }
+      });
+
+      console.log('[UI] Real-time search setup complete');
+
+      // Close search results when clicking outside
+      document.addEventListener('click', (e) => {
+        const searchResults = document.getElementById('searchResults');
+        const appNameInput = document.getElementById('appName');
+
+        if (!searchResults.contains(e.target) && e.target !== appNameInput) {
+          searchResults.style.display = 'none';
+        }
+      });
+
+      // Prevent closing when clicking inside search results
+      document.getElementById('searchResults').addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      // Rank tab selection
+    document.querySelectorAll('.rank-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.rank-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        selectedRank = tab.dataset.rank;
+        loadRankData();
+      });
+    });
+
+    // Batch import button
+    document.getElementById('batchImportBtn').addEventListener('click', () => {
+      if (selectedApps.size === 0) {
+        console.warn('[UI][batchImport] No apps selected, aborting');
+        showStatus('请至少选择一个应用', 'error');
+        return;
+      }
+
+      const appsToImport = Array.from(selectedApps);
+      console.log('[UI][batchImport] Starting batch import —', appsToImport.length, 'apps, device:', selectedDevice, 'country:', document.getElementById('country').value);
+      appsToImport.forEach((app, i) => console.log(`[UI][batchImport]   App ${i + 1}:`, app.trackName, '(trackId:', app.trackId + ')'));
+      showStatus(`正在导入 ${appsToImport.length} 个应用...`, 'loading');
+      const btn = document.getElementById('batchImportBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>导入中...';
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'batch-import',
+          apps: appsToImport,
+          device: selectedDevice,
+          country: document.getElementById('country').value
+        }
+      }, '*');
+    });
+
+    function updateSelectedCount() {
+      const btn = document.getElementById('batchImportBtn');
+      btn.disabled = selectedApps.size === 0;
+      btn.textContent = selectedApps.size > 0 ? `导入所选 (${selectedApps.size})` : '导入所选';
+    }
+
+    // Load rank data
+    function loadRankData() {
+      const country = document.getElementById('country').value;
+      const genre = searchedApp?.primaryGenreId || 6005;
+
+      showStatus('加载竞品榜单...', 'loading');
+      document.getElementById('searchWrap').classList.add('loading');
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'load-rank',
+          rank: selectedRank,
+          country,
+          genre,
+          appName: searchedApp?.trackName || '',
+          trackId: searchedApp?.trackId || null
+        }
+      }, '*');
+    }
+
+    // Handle messages from plugin code
+    console.log('[UI] Setting up message handler...');
+    window.onmessage = async (event) => {
+      // Check if message is from plugin
+      if (!event.data || !event.data.pluginMessage) {
+        return;
+      }
+
+      const msg = event.data.pluginMessage;
+      console.log('[UI] Received message:', msg.type);
+
+      if (msg.type === 'search-results') {
+        document.getElementById('searchWrap').classList.remove('loading');
+        if (msg.apps.length === 0) {
+          showStatus('未找到应用', 'error');
+          document.getElementById('searchResults').style.display = 'none';
+          return;
+        }
+        showStatus('');
+        displaySearchResults(msg.apps);
+      }
+
+      if (msg.type === 'rank-results') {
+        document.getElementById('searchWrap').classList.remove('loading');
+        rankApps = (msg.apps || []).filter(app => !searchedApp || String(app.trackId) !== String(searchedApp.trackId));
+        displayRankList(rankApps);
+        showStatus(rankApps.length > 0 ? '' : '未找到竞品榜单', rankApps.length > 0 ? '' : 'error');
+      }
+
+      if (msg.type === 'import-complete') {
+        console.log('[UI] Import complete — imported', msg.count, 'items');
+        showStatus(`✓ 成功导入 ${msg.count} 个应用`, 'success');
+        selectedApps.clear();
+        updateSelectedCount();
+        displayRankList(rankApps);
+      }
+
+      if (msg.type === 'error') {
+        console.error('[UI] Plugin error:', msg.message);
+        updateSelectedCount();
+        showStatus('错误: ' + msg.message, 'error');
+      }
+
+      if (msg.type === 'diagnostic') {
+        console.log('[UI] Diagnostic:', msg.level, msg.message);
+        showStatus(msg.message, msg.level || 'loading');
+      }
+
+      if (msg.type === 'scrape-appstore') {
+        console.log('[UI][scrape] Scraping App Store for trackId:', msg.trackId, 'country:', msg.country);
+        const appStoreUrl = `https://apps.apple.com/${msg.country.toLowerCase()}/app/id${msg.trackId}`;
+
+        // Use proxy server to bypass CORS
+        const proxyUrl = `http://localhost:3456?url=${encodeURIComponent(appStoreUrl)}`;
+        console.log('[UI][scrape] Using proxy:', proxyUrl);
+
+        try {
+          showStatus('正在通过本地代理抓取 App Store 页面...', 'loading');
+          const response = await fetch(proxyUrl);
+          console.log('[UI][scrape] Response status:', response.status, '| URL:', proxyUrl);
+          const html = await response.text();
+
+          if (!response.ok) {
+            const errorMessage = `代理请求失败 (HTTP ${response.status})`;
+            console.error('[UI][scrape] ' + errorMessage + ':', html.slice(0, 200));
+            showStatus(errorMessage, 'error');
+            parent.postMessage({
+              pluginMessage: {
+                type: 'scrape-result',
+                trackId: msg.trackId,
+                iphone: [],
+                ipad: [],
+                error: errorMessage,
+                stage: 'proxy-http'
+              }
+            }, '*');
+            return;
+          }
+
+          console.log('[UI][scrape] HTML length:', html.length);
+
+          const iphoneScreenshots = [];
+          const ipadScreenshots = [];
+
+          // Extract all source srcset URLs
+          const sourcePattern = /<source[^>]*srcset="([^"]+)"[^>]*>/g;
+          const sources = [...html.matchAll(sourcePattern)];
+          console.log('[UI][scrape] Found', sources.length, 'source tags with srcset');
+
+          // Parse srcset and extract URLs
+          const allUrls = [];
+          for (const match of sources) {
+            const srcset = match[1];
+            const pairs = srcset.split(',');
+            for (const pair of pairs) {
+              const urlMatch = pair.trim().match(/(https:\/\/[^\s]+)/);
+              if (urlMatch) {
+                allUrls.push(urlMatch[1]);
+              }
+            }
+          }
+
+          console.log('[UI][scrape] Total URLs extracted:', allUrls.length);
+
+          // Filter for screenshot URLs (exclude placeholders and icons)
+          const screenshotUrls = allUrls.filter(url => {
+            return url.includes('/PurpleSource') &&
+                   !url.includes('Placeholder.mill') &&
+                   (url.includes('.png/') || url.includes('.jpg/'));
+          });
+
+          console.log('[UI][scrape] Screenshot URLs found:', screenshotUrls.length);
+
+          // Deduplicate by base filename
+          const uniqueScreenshots = new Map();
+          for (const url of screenshotUrls) {
+            const baseMatch = url.match(/\/([^\/]+\.(png|jpg))\/\d+x\d+/);
+            if (baseMatch) {
+              const baseFilename = baseMatch[1];
+              // Keep the largest version
+              if (!uniqueScreenshots.has(baseFilename) || url.includes('600x') || url.includes('1300')) {
+                uniqueScreenshots.set(baseFilename, url);
+              }
+            }
+          }
+
+          const finalScreenshots = Array.from(uniqueScreenshots.values());
+          console.log('[UI][scrape] Unique screenshots:', finalScreenshots.length);
+
+          // Categorize as iPhone or iPad
+          for (const url of finalScreenshots) {
+            if (url.includes('iPad') || url.includes('2048x') || url.includes('2224x')) {
+              ipadScreenshots.push(url);
+            } else {
+              iphoneScreenshots.push(url);
+            }
+          }
+
+          console.log('[UI][scrape] Categorized — iPhone:', iphoneScreenshots.length, 'iPad:', ipadScreenshots.length);
+
+          if (iphoneScreenshots.length === 0 && ipadScreenshots.length === 0) {
+            showStatus('App Store 页面已抓到，但没有解析出截图', 'warning');
+          }
+
+          parent.postMessage({
+            pluginMessage: {
+              type: 'scrape-result',
+              trackId: msg.trackId,
+              iphone: iphoneScreenshots,
+              ipad: ipadScreenshots,
+              error: iphoneScreenshots.length === 0 && ipadScreenshots.length === 0 ? 'App Store 页面已返回，但没有解析出截图' : undefined,
+              stage: iphoneScreenshots.length === 0 && ipadScreenshots.length === 0 ? 'parse-empty' : 'success'
+            }
+          }, '*');
+        } catch (err) {
+          const errorMessage = err && err.message ? err.message : String(err);
+          console.error('[UI][scrape] ERROR:', errorMessage);
+          showStatus('本地代理或抓取失败: ' + errorMessage, 'error');
+          parent.postMessage({
+            pluginMessage: {
+              type: 'scrape-result',
+              trackId: msg.trackId,
+              iphone: [],
+              ipad: [],
+              error: errorMessage,
+              stage: 'proxy-fetch'
+            }
+          }, '*');
+        }
+      }
+    };
+
+    function displaySearchResults(apps) {
+      const container = document.getElementById('searchResultsList');
+      container.innerHTML = '';
+
+      const searchResults = document.getElementById('searchResults');
+      searchResults.style.display = 'block';
+
+      apps.forEach((app) => {
+        const item = document.createElement('div');
+        item.className = 'rank-item';
+
+        item.innerHTML = `
+          <img src="${app.artworkUrl100 || app.artworkUrl60}" class="rank-icon" alt="${app.trackName}">
+          <div class="rank-info">
+            <div class="rank-name">${app.trackName}</div>
+            <div class="rank-developer">${app.artistName}</div>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          // Clear previous selection
+          document.querySelectorAll('#searchResultsList .rank-item').forEach(i => i.classList.remove('checked'));
+          item.classList.add('checked');
+
+          // Store selected app and auto-select it by default
+          const prevApp = searchedApp?.trackName ?? '(none)';
+          searchedApp = app;
+          selectedApps.clear();
+          selectedApps.add(app);
+          updateSelectedCount();
+          console.log('[UI] Search result selected:', app.trackName, '(was:', prevApp + ') | trackId:', app.trackId, '| primaryGenreId:', app.primaryGenreId);
+
+          // Hide search results dropdown
+          document.getElementById('searchResults').style.display = 'none';
+
+          // Show rank section and load rank data
+          document.getElementById('rankSection').classList.add('show');
+          loadRankData();
+        });
+
+        container.appendChild(item);
+      });
+    }
+
+    function displayRankList(apps) {
+      const container = document.getElementById('rankList');
+      container.innerHTML = '';
+
+      // Add searched app at the top
+      if (searchedApp) {
+        const searchedItem = document.createElement('div');
+        searchedItem.className = 'rank-item';
+
+        const isChecked = selectedApps.has(searchedApp);
+
+        searchedItem.innerHTML = `
+          <img src="${searchedApp.artworkUrl100 || searchedApp.artworkUrl60}" class="rank-icon" alt="${searchedApp.trackName}">
+          <div class="rank-info">
+            <div class="rank-name">${searchedApp.trackName}</div>
+            <div class="rank-developer">${searchedApp.artistName}</div>
+          </div>
+          <input type="checkbox" ${isChecked ? 'checked' : ''}><span class="checkmark">✓</span>
+        `;
+
+        const checkbox = searchedItem.querySelector('input[type="checkbox"]');
+
+        searchedItem.addEventListener('click', () => {
+          const isNowChecked = !checkbox.checked;
+          checkbox.checked = isNowChecked;
+          if (isNowChecked) {
+            selectedApps.add(searchedApp);
+            searchedItem.classList.add('checked');
+          } else {
+            selectedApps.delete(searchedApp);
+            searchedItem.classList.remove('checked');
+          }
+          console.log('[UI] Searched app toggled:', searchedApp.trackName, '→', isNowChecked ? 'checked' : 'unchecked', '| total selected:', selectedApps.size);
+          updateSelectedCount();
+        });
+
+        checkbox.addEventListener('click', (e) => e.stopPropagation());
+
+        if (isChecked) {
+          searchedItem.classList.add('checked');
+        }
+
+        container.appendChild(searchedItem);
+
+        // Add divider after searched app
+        const divider = document.createElement('div');
+        divider.className = 'rank-divider';
+        searchedItem.after(divider);
+      }
+
+      // Add rank apps
+      if (apps.length === 0) {
+        if (!searchedApp) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'empty-state';
+          emptyDiv.textContent = '暂无榜单数据';
+          container.appendChild(emptyDiv);
+        }
+        return;
+      }
+
+      apps.forEach((app) => {
+        const item = document.createElement('div');
+        item.className = 'rank-item';
+
+        const isChecked = selectedApps.has(app);
+
+        item.innerHTML = `
+          <img src="${app.artworkUrl100 || app.artworkUrl60}" class="rank-icon" alt="${app.trackName}">
+          <div class="rank-info">
+            <div class="rank-name">${app.trackName}</div>
+            <div class="rank-developer">${app.artistName}</div>
+          </div>
+          <input type="checkbox" ${isChecked ? 'checked' : ''}><span class="checkmark">✓</span>
+        `;
+
+        const checkbox = item.querySelector('input[type="checkbox"]');
+
+        item.addEventListener('click', () => {
+          const isNowChecked = !checkbox.checked;
+          checkbox.checked = isNowChecked;
+          if (isNowChecked) {
+            selectedApps.add(app);
+            item.classList.add('checked');
+          } else {
+            selectedApps.delete(app);
+            item.classList.remove('checked');
+          }
+          console.log('[UI] Rank app toggled:', app.trackName, '→', isNowChecked ? 'checked' : 'unchecked', '| total selected:', selectedApps.size);
+          updateSelectedCount();
+        });
+
+        checkbox.addEventListener('click', (e) => e.stopPropagation());
+
+        if (isChecked) {
+          item.classList.add('checked');
+        }
+
+        container.appendChild(item);
+      });
+    }
+
+    function showStatus(message, type = '') {
+      console.log('[UI] Status:', message, type);
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type ? 'status ' + type : 'status';
+    }
+
+    updateSelectedCount();
+    console.log('[UI] All setup complete! Plugin UI ready.');
+
+  } catch (error) {
+    console.error('[UI] FATAL ERROR during initialization:', error);
+    console.error('[UI] Error stack:', error.stack);
+    alert('插件初始化失败: ' + error.message);
+  }
+  </script>
+</body>
+</html>

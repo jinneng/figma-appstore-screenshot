@@ -1,0 +1,28 @@
+{
+  "name": "appstore-to-figma",
+  "version": "1.0.0",
+  "description": "Fetch App Store screenshots and icons and import them into Figma",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "appstore",
+    "figma",
+    "screenshots",
+    "icon",
+    "figma-plugin"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.90.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "app-store-scraper": "^0.18.0"
+  }
+}

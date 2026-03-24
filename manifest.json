@@ -1,0 +1,20 @@
+{
+  "name": "App Store 截图导入器",
+  "id": "appstore-screenshot-importer",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": [
+      "https://itunes.apple.com",
+      "https://*.mzstatic.com",
+      "https://apps.apple.com",
+      "https://rss.marketingtools.apple.com"
+    ],
+    "reasoning": "Fetches App Store metadata from Apple APIs, downloads icons and screenshots from Apple's CDN, and reads App Store pages for screenshot fallback.",
+    "devAllowedDomains": [
+      "http://localhost:3456"
+    ]
+  }
+}
