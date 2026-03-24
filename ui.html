@@ -402,10 +402,14 @@
       border: 2px solid rgba(255,255,255,0.3);
       border-top-color: #ffffff;
       border-radius: 50%;
-      animation: spin 0.6s linear infinite;
+      animation: spin-inline 0.6s linear infinite;
     }
 
     @keyframes spin {
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    @keyframes spin-inline {
       to { transform: rotate(360deg); }
     }
 
@@ -745,6 +749,11 @@
       if (msg.type === 'rank-results') {
         document.getElementById('searchWrap').classList.remove('loading');
         rankApps = (msg.apps || []).filter(app => !searchedApp || String(app.trackId) !== String(searchedApp.trackId));
+        // Clear previous selections but keep searchedApp if it was selected
+        const keepSearched = searchedApp && selectedApps.has(searchedApp);
+        selectedApps.clear();
+        if (keepSearched) selectedApps.add(searchedApp);
+        updateSelectedCount();
         displayRankList(rankApps);
         showStatus(rankApps.length > 0 ? '' : '未找到竞品榜单', rankApps.length > 0 ? '' : 'error');
       }
@@ -766,6 +775,24 @@
       if (msg.type === 'diagnostic') {
         console.log('[UI] Diagnostic:', msg.level, msg.message);
         showStatus(msg.message, msg.level || 'loading');
+      }
+
+      if (msg.type === 'fetch-rss') {
+        console.log('[UI][fetch-rss] Fetching RSS via proxy:', msg.url);
+        try {
+          const proxyUrl = `http://localhost:3456?url=${encodeURIComponent(msg.url)}`;
+          const response = await fetch(proxyUrl);
+          if (!response.ok) {
+            console.warn('[UI][fetch-rss] HTTP', response.status);
+            parent.postMessage({ pluginMessage: { type: 'rss-result', data: null } }, '*');
+            return;
+          }
+          const data = await response.json();
+          parent.postMessage({ pluginMessage: { type: 'rss-result', data } }, '*');
+        } catch (err) {
+          console.error('[UI][fetch-rss] Failed:', err);
+          parent.postMessage({ pluginMessage: { type: 'rss-result', data: null } }, '*');
+        }
       }
 
       if (msg.type === 'scrape-appstore') {
@@ -919,6 +946,7 @@
           // Store selected app and auto-select it by default
           const prevApp = searchedApp?.trackName ?? '(none)';
           searchedApp = app;
+          document.getElementById('appName').value = app.trackName;
           selectedApps.clear();
           selectedApps.add(app);
           updateSelectedCount();

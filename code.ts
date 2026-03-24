@@ -201,88 +201,92 @@ async function searchApp(appName: string, country: string) {
 async function loadRankData(rank: string, country: string, genre: number, appName?: string, trackId?: number) {
   const allApps = new Map<string, any>();
 
-  // 1. Primary: use iTunes lookup entity=software to get Apple's related apps
-  if (trackId) {
-    try {
-      const lookupUrl = `https://itunes.apple.com/lookup?id=${trackId}&entity=software&country=${country}&limit=50`;
-      const lookupResponse = await fetch(lookupUrl);
-      const lookupData = await lookupResponse.json();
-      if (lookupData.results) {
-        for (let i = 1; i < lookupData.results.length; i++) {
-          const app = lookupData.results[i];
-          if (app.trackId) {
-            allApps.set(String(app.trackId), app);
-          }
-        }
-      }
-      console.log('[loadRankData] iTunes lookup related apps:', allApps.size);
-    } catch (error) {
-      console.error('[loadRankData] iTunes lookup failed:', error instanceof Error ? error.message : error);
-    }
-  }
+  const rankTypeMap: Record<string, string> = {
+    'free': 'top-free',
+    'paid': 'top-paid',
+    'grossing': 'top-grossing'
+  };
+  const rankType = rankTypeMap[rank] || 'top-free';
 
-  // 2. Fallback: RSS category ranking + keyword search if lookup returned too few
-  if (allApps.size < 10) {
-    const rankTypeMap: Record<string, string> = {
-      'free': 'top-free',
-      'paid': 'top-paid',
-      'grossing': 'top-grossing'
+  // 按照文档：三步并行
+  // 1. RSS 同类别排行榜 (getTopApps_RSS)
+  // 2. iTunes lookup 关联应用
+  // 3. 搜索 App 名称关键词
+
+  const rssPromise = new Promise<any>((resolve) => {
+    const handler = (msg: any) => {
+      if (msg?.type === 'rss-result') {
+        figma.ui.off('message', handler);
+        resolve(msg.data);
+      }
     };
-    const rankType = rankTypeMap[rank] || 'top-free';
+    figma.ui.on('message', handler);
+    const rssUrl = `https://rss.marketingtools.apple.com/api/v2/${country.toLowerCase()}/apps/${rankType}/50/apps.json${genre ? '?genreId=' + genre : ''}`;
+    figma.ui.postMessage({ type: 'fetch-rss', url: rssUrl });
+    setTimeout(() => { figma.ui.off('message', handler); resolve(null); }, 8000);
+  });
 
-    // 2a. RSS category ranking
-    try {
-      const rssUrl = `https://rss.marketingtools.apple.com/api/v2/${country.toLowerCase()}/apps/${rankType}/50/apps.json${genre ? '?genreId=' + genre : ''}`;
-      const rssResponse = await fetch(rssUrl);
-      const rssData = await rssResponse.json();
+  const lookupPromise = trackId
+    ? fetch(`https://itunes.apple.com/lookup?id=${trackId}&entity=software&country=${country}&limit=50`)
+        .then(r => r.json()).catch(() => null)
+    : Promise.resolve(null);
 
-      if (rssData.feed?.results) {
-        const appIds = rssData.feed.results
-          .map((r: any) => r.id)
-          .filter((id: string) => !allApps.has(id) && (!trackId || id !== String(trackId)))
-          .slice(0, 20);
+  const searchPromise = appName
+    ? fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(appName.split(/[\s\-:]+/).slice(0, 2).join(' '))}&media=software&entity=software&limit=30&country=${country}`)
+        .then(r => r.json()).catch(() => null)
+    : Promise.resolve(null);
 
-        if (appIds.length > 0) {
-          const batchUrl = `https://itunes.apple.com/lookup?id=${appIds.join(',')}&country=${country}`;
-          const batchResponse = await fetch(batchUrl);
-          const batchData = await batchResponse.json();
-          if (batchData.results) {
-            for (const app of batchData.results) {
-              if (app.trackId && !allApps.has(String(app.trackId))) {
-                allApps.set(String(app.trackId), app);
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('[loadRankData] RSS fetch failed:', error instanceof Error ? error.message : error);
-    }
+  const [rssData, lookupData, searchData] = await Promise.all([rssPromise, lookupPromise, searchPromise]);
 
-    // 2b. Keyword search (only keep same genre)
-    if (appName && allApps.size < 10) {
+  // 1. RSS 排行榜：拿到 ID 列表后用 getAppsByIds 批量查详情
+  if (rssData?.feed?.results) {
+    const appIds = rssData.feed.results
+      .map((r: any) => r.id)
+      .filter((id: string) => !trackId || id !== String(trackId));
+
+    if (appIds.length > 0) {
       try {
-        const keywords = appName.split(/[\s\-:]+/).slice(0, 2).join(' ');
-        const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(keywords)}&media=software&entity=software&limit=30&country=${country}`;
-        const searchResponse = await fetch(searchUrl);
-        const searchData = await searchResponse.json();
-        if (searchData.results) {
-          for (const app of searchData.results) {
-            if (app.trackId && !allApps.has(String(app.trackId)) && (!trackId || app.trackId !== trackId)) {
-              // Only add apps from the same genre
-              if (app.primaryGenreId === genre) {
-                allApps.set(String(app.trackId), app);
-              }
+        const batchUrl = `https://itunes.apple.com/lookup?id=${appIds.slice(0, 50).join(',')}&country=${country}`;
+        const batchResponse = await fetch(batchUrl);
+        const batchData = await batchResponse.json();
+        if (batchData.results) {
+          for (const app of batchData.results) {
+            if (app.trackId && app.trackId !== trackId) {
+              allApps.set(String(app.trackId), app);
             }
           }
         }
       } catch (error) {
-        console.error('[loadRankData] Search failed:', error instanceof Error ? error.message : error);
+        console.error('[loadRankData] RSS batch lookup failed:', error instanceof Error ? error.message : error);
+      }
+    }
+    console.log('[loadRankData] RSS rank apps:', allApps.size);
+  }
+
+  // 2. iTunes lookup 关联应用（只保留同类别）
+  if (lookupData?.results) {
+    for (let i = 1; i < lookupData.results.length; i++) {
+      const app = lookupData.results[i];
+      if (app.trackId && !allApps.has(String(app.trackId)) && app.primaryGenreId === genre) {
+        allApps.set(String(app.trackId), app);
       }
     }
   }
 
-  // 3. Sort: same genre first, then by rating
+  // 3. 搜索关键词（只保留同类别）
+  if (searchData?.results) {
+    for (const app of searchData.results) {
+      if (app.trackId && !allApps.has(String(app.trackId)) && (!trackId || app.trackId !== trackId)) {
+        if (app.primaryGenreId === genre) {
+          allApps.set(String(app.trackId), app);
+        }
+      }
+    }
+  }
+
+  console.log('[loadRankData] Total apps:', allApps.size, '| rank:', rank);
+
+  // 排序：同类别优先，再按评分
   const result = Array.from(allApps.values());
   result.sort((a: any, b: any) => {
     const aSame = a.primaryGenreId === genre ? 1 : 0;
