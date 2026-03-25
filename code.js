@@ -453,7 +453,7 @@ function importScreenshots(app, device, country, startY) {
                     console.log('[importScreenshots] Creating text nodes for app:', app.trackName);
                     // 计算文字块垂直居中于图标
                     const iconHeight = 120;
-                    const titleSize = 24;
+                    const titleSize = 28;
                     const subSize = 14;
                     const devSize = 13;
                     const lineGap = 4;

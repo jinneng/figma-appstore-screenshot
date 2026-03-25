@@ -482,7 +482,7 @@ async function importScreenshots(app: any, device: string, country: string, star
 
         // 计算文字块垂直居中于图标
         const iconHeight = 120;
-        const titleSize = 24;
+        const titleSize = 28;
         const subSize = 14;
         const devSize = 13;
         const lineGap = 4;
