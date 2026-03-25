@@ -440,9 +440,7 @@
     }
 
     .status.loading {
-      display: block;
-      background: #fff8e6;
-      color: #8a6d00;
+      display: none;
     }
 
     .status.success {
@@ -461,6 +459,82 @@
       display: block;
       background: #fff3e8;
       color: #9a5a12;
+    }
+
+    .skeleton-list {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 16px;
+    }
+
+    .skeleton-list.show {
+      display: flex;
+    }
+
+    .skeleton-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .skeleton-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #f0f0f0;
+      flex-shrink: 0;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    .skeleton-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .skeleton-line {
+      height: 12px;
+      border-radius: 6px;
+      background: #f0f0f0;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    .skeleton-line.short {
+      width: 60%;
+    }
+
+    .skeleton-line.long {
+      width: 85%;
+    }
+
+    .skeleton-check {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      flex-shrink: 0;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    .skeleton-item:nth-child(2) .skeleton-icon,
+    .skeleton-item:nth-child(2) .skeleton-line,
+    .skeleton-item:nth-child(2) .skeleton-check { animation-delay: 0.1s; }
+    .skeleton-item:nth-child(3) .skeleton-icon,
+    .skeleton-item:nth-child(3) .skeleton-line,
+    .skeleton-item:nth-child(3) .skeleton-check { animation-delay: 0.2s; }
+    .skeleton-item:nth-child(4) .skeleton-icon,
+    .skeleton-item:nth-child(4) .skeleton-line,
+    .skeleton-item:nth-child(4) .skeleton-check { animation-delay: 0.3s; }
+    .skeleton-item:nth-child(5) .skeleton-icon,
+    .skeleton-item:nth-child(5) .skeleton-line,
+    .skeleton-item:nth-child(5) .skeleton-check { animation-delay: 0.4s; }
+
+    @keyframes shimmer {
+      0%, 100% { background: #f0f0f0; }
+      50% { background: #e4e4e4; }
     }
 
     .empty-state {
@@ -539,6 +613,13 @@
           </div>
         </div>
         <div class="rank-list" id="rankList">
+        </div>
+        <div class="skeleton-list" id="skeletonList">
+          <div class="skeleton-item"><div class="skeleton-icon"></div><div class="skeleton-text"><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div><div class="skeleton-check"></div></div>
+          <div class="skeleton-item"><div class="skeleton-icon"></div><div class="skeleton-text"><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div><div class="skeleton-check"></div></div>
+          <div class="skeleton-item"><div class="skeleton-icon"></div><div class="skeleton-text"><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div><div class="skeleton-check"></div></div>
+          <div class="skeleton-item"><div class="skeleton-icon"></div><div class="skeleton-text"><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div><div class="skeleton-check"></div></div>
+          <div class="skeleton-item"><div class="skeleton-icon"></div><div class="skeleton-text"><div class="skeleton-line long"></div><div class="skeleton-line short"></div></div><div class="skeleton-check"></div></div>
         </div>
       </section>
 
@@ -732,7 +813,9 @@
       const country = document.getElementById('country').value;
       const genre = searchedApp?.primaryGenreId || 0;
 
-      showStatus('加载榜单...', 'loading');
+      // 显示骨架屏，隐藏列表
+      document.getElementById('skeletonList').classList.add('show');
+      document.getElementById('rankList').style.display = 'none';
       document.getElementById('searchWrap').classList.add('loading');
 
       parent.postMessage({
@@ -771,6 +854,8 @@
 
       if (msg.type === 'rank-results') {
         document.getElementById('searchWrap').classList.remove('loading');
+        document.getElementById('skeletonList').classList.remove('show');
+        document.getElementById('rankList').style.display = '';
         rankApps = (msg.apps || []).filter(app => !searchedApp || String(app.trackId) !== String(searchedApp.trackId));
         // Clear previous selections but keep searchedApp if it was selected
         const keepSearched = searchedApp && selectedApps.has(searchedApp);

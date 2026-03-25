@@ -480,35 +480,47 @@ async function importScreenshots(app: any, device: string, country: string, star
       try {
         console.log('[importScreenshots] Creating text nodes for app:', app.trackName);
 
+        // 计算文字块垂直居中于图标
+        const iconHeight = 120;
+        const titleSize = 24;
+        const subSize = 14;
+        const devSize = 13;
+        const lineGap = 4;
+        const titleGap = 12;
+        let totalTextHeight = titleSize + titleGap + devSize;
+        const hasGenre = appDetails.genres && appDetails.genres.length > 0;
+        if (hasGenre) totalTextHeight += subSize + lineGap;
+        const textStartY = yOffset + Math.round((iconHeight - totalTextHeight) / 2);
+
         const textNode = figma.createText();
         textNode.fontName = { family: "Inter", style: "Bold" };
         textNode.characters = app.trackName || 'Unknown App';
-        textNode.fontSize = 32;
+        textNode.fontSize = titleSize;
         textNode.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
         textNode.x = 168;
-        textNode.y = yOffset + 8;
+        textNode.y = textStartY;
         frame.appendChild(textNode);
         console.log('[importScreenshots] App name text created');
 
-        let textYOffset = yOffset + 42;
+        let textYOffset = textStartY + titleSize + titleGap;
 
         // Add subtitle if available
-        if (appDetails.genres && appDetails.genres.length > 0) {
+        if (hasGenre) {
           const subtitleNode = figma.createText();
           subtitleNode.characters = appDetails.genres[0];
-          subtitleNode.fontSize = 17;
+          subtitleNode.fontSize = subSize;
           subtitleNode.fills = [{ type: 'SOLID', color: { r: 0.56, g: 0.56, b: 0.58 } }];
           subtitleNode.x = 168;
           subtitleNode.y = textYOffset;
           frame.appendChild(subtitleNode);
           console.log('[importScreenshots] Genre subtitle created:', appDetails.genres[0]);
-          textYOffset += 24;
+          textYOffset += subSize + lineGap;
         }
 
         // Add developer name
         const developerNode = figma.createText();
-        developerNode.characters = `${app.artistName || 'Unknown'} • v${app.version || '1.0'}`;
-        developerNode.fontSize = 15;
+        developerNode.characters = `${app.artistName || 'Unknown'} · v${app.version || '1.0'}`;
+        developerNode.fontSize = devSize;
         developerNode.fills = [{ type: 'SOLID', color: { r: 0.56, g: 0.56, b: 0.58 } }];
         developerNode.x = 168;
         developerNode.y = textYOffset;
