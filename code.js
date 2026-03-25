@@ -13,21 +13,13 @@ console.log('[Plugin] Plugin code loaded, showing UI...');
 figma.showUI(__html__, { width: 320, height: 700 });
 const CF_PROXY = 'https://appstore-proxy.jinneng-tools.workers.dev';
 /**
- * 带 fallback 的 fetch：先直连，失败后走 CF 代理
+ * 通过 CF 代理请求 Apple API，确保所有地区都能正常访问
  */
-function fetchWithFallback(url) {
+function fetchViaProxy(url) {
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const resp = yield fetch(url);
-            if (resp.ok)
-                return resp;
-            throw new Error(`Direct fetch failed: ${resp.status}`);
-        }
-        catch (directErr) {
-            console.log(`[fetchWithFallback] 直连失败，走 CF 代理: ${url}`);
-            const proxyUrl = `${CF_PROXY}/?url=${encodeURIComponent(url)}`;
-            return fetch(proxyUrl);
-        }
+        const proxyUrl = `${CF_PROXY}/?url=${encodeURIComponent(url)}`;
+        console.log(`[fetchViaProxy] ${url}`);
+        return fetch(proxyUrl);
     });
 }
 const pendingScrapeRequests = new Map();
@@ -116,7 +108,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                     console.log(`[Plugin][batch-import] App ${i + 1} has no screenshotUrls, fetching details from iTunes...`);
                     const detailsUrl = `https://itunes.apple.com/lookup?id=${appToImport.trackId}&country=${msg.country}&entity=software`;
                     console.log(`[Plugin][batch-import] Details URL:`, detailsUrl);
-                    const response = yield fetchWithFallback(detailsUrl);
+                    const response = yield fetchViaProxy(detailsUrl);
                     console.log(`[Plugin][batch-import] Details response status:`, response.status);
                     const data = yield response.json();
                     if (data.results && data.results.length > 0) {
@@ -161,7 +153,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                 console.log('[Plugin][import-screenshots] No screenshotUrls, fetching full details for trackId:', appToImport.trackId);
                 const detailsUrl = `https://itunes.apple.com/lookup?id=${appToImport.trackId}&country=${msg.country}&entity=software`;
                 console.log('[Plugin][import-screenshots] Details URL:', detailsUrl);
-                const response = yield fetchWithFallback(detailsUrl);
+                const response = yield fetchViaProxy(detailsUrl);
                 console.log('[Plugin][import-screenshots] Details response status:', response.status);
                 const data = yield response.json();
                 if (data.results && data.results.length > 0) {
@@ -199,7 +191,7 @@ function searchApp(appName, country) {
         var _a, _b;
         const url = `https://itunes.apple.com/search?term=${encodeURIComponent(appName)}&country=${country}&entity=software&limit=20`;
         console.log('[searchApp] Request URL:', url);
-        const response = yield fetchWithFallback(url);
+        const response = yield fetchViaProxy(url);
         console.log('[searchApp] Response status:', response.status, response.statusText);
         const data = yield response.json();
         console.log('[searchApp] Raw result count:', (_b = (_a = data.results) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0);
@@ -236,11 +228,11 @@ function loadRankData(rank, country, genre, appName, trackId) {
             setTimeout(() => { figma.ui.off('message', handler); resolve(null); }, 8000);
         });
         const lookupPromise = trackId
-            ? fetchWithFallback(`https://itunes.apple.com/lookup?id=${trackId}&entity=software&country=${country}&limit=50`)
+            ? fetchViaProxy(`https://itunes.apple.com/lookup?id=${trackId}&entity=software&country=${country}&limit=50`)
                 .then(r => r.json()).catch(() => null)
             : Promise.resolve(null);
         const searchPromise = appName
-            ? fetchWithFallback(`https://itunes.apple.com/search?term=${encodeURIComponent(appName.split(/[\s\-:]+/).slice(0, 2).join(' '))}&media=software&entity=software&limit=30&country=${country}`)
+            ? fetchViaProxy(`https://itunes.apple.com/search?term=${encodeURIComponent(appName.split(/[\s\-:]+/).slice(0, 2).join(' '))}&media=software&entity=software&limit=30&country=${country}`)
                 .then(r => r.json()).catch(() => null)
             : Promise.resolve(null);
         const [rssData, lookupData, searchData] = yield Promise.all([rssPromise, lookupPromise, searchPromise]);
@@ -252,7 +244,7 @@ function loadRankData(rank, country, genre, appName, trackId) {
             if (appIds.length > 0) {
                 try {
                     const batchUrl = `https://itunes.apple.com/lookup?id=${appIds.slice(0, 50).join(',')}&country=${country}`;
-                    const batchResponse = yield fetchWithFallback(batchUrl);
+                    const batchResponse = yield fetchViaProxy(batchUrl);
                     const batchData = yield batchResponse.json();
                     if (batchData.results) {
                         for (const app of batchData.results) {
@@ -354,7 +346,7 @@ function importScreenshots(app, device, country, startY) {
         if ((!app.screenshotUrls || app.screenshotUrls.length === 0) && app.trackId) {
             const detailsUrl = `https://itunes.apple.com/lookup?id=${app.trackId}&country=${country}&entity=software`;
             console.log('[importScreenshots] Fetching app details:', detailsUrl);
-            const response = yield fetchWithFallback(detailsUrl);
+            const response = yield fetchViaProxy(detailsUrl);
             console.log('[importScreenshots] Details response status:', response.status);
             const data = yield response.json();
             if (data.results && data.results.length > 0) {
@@ -649,8 +641,7 @@ function createImageNode(url, name) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`[createImageNode] Fetching: "${name}" from`, url);
         try {
-            const response = yield fetch(url);
-            console.log(`[createImageNode] Response status for "${name}":`, response.status, response.statusText);
+            const response = yield fetchViaProxy(url);
             const arrayBuffer = yield response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
             console.log(`[createImageNode] Downloaded ${uint8Array.byteLength} bytes for "${name}"`);
