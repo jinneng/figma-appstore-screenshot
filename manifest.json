@@ -10,7 +10,8 @@
       "https://itunes.apple.com",
       "https://*.mzstatic.com",
       "https://apps.apple.com",
-      "https://rss.marketingtools.apple.com"
+      "https://rss.marketingtools.apple.com",
+      "https://appstore-proxy.jinneng-tools.workers.dev"
     ],
     "reasoning": "Fetches App Store metadata from Apple APIs, downloads icons and screenshots from Apple's CDN, and reads App Store pages for screenshot fallback.",
     "devAllowedDomains": [
