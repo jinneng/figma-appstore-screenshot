@@ -224,6 +224,18 @@ async function loadRankData(rank: string, country: string, genre: number, appNam
   // 2. iTunes lookup 关联应用
   // 3. 搜索 App 名称关键词
 
+  // 畅销榜使用旧版 iTunes RSS（新版 API 不支持 top-grossing）
+  let rssUrl: string;
+  let isLegacyRss = false;
+  if (rank === 'grossing') {
+    isLegacyRss = true;
+    const legacyRankMap: Record<string, string> = { 'grossing': 'topgrossingapplications' };
+    const legacyType = legacyRankMap[rank];
+    rssUrl = `https://itunes.apple.com/${country.toLowerCase()}/rss/${legacyType}/limit=50${genre ? '/genre=' + genre : ''}/json`;
+  } else {
+    rssUrl = `https://rss.marketingtools.apple.com/api/v2/${country.toLowerCase()}/apps/${rankType}/50/apps.json${genre ? '?genreId=' + genre : ''}`;
+  }
+
   const rssPromise = new Promise<any>((resolve) => {
     const handler = (msg: any) => {
       if (msg?.type === 'rss-result') {
@@ -232,7 +244,6 @@ async function loadRankData(rank: string, country: string, genre: number, appNam
       }
     };
     figma.ui.on('message', handler);
-    const rssUrl = `https://rss.marketingtools.apple.com/api/v2/${country.toLowerCase()}/apps/${rankType}/50/apps.json${genre ? '?genreId=' + genre : ''}`;
     figma.ui.postMessage({ type: 'fetch-rss', url: rssUrl });
     setTimeout(() => { figma.ui.off('message', handler); resolve(null); }, 8000);
   });
@@ -250,29 +261,38 @@ async function loadRankData(rank: string, country: string, genre: number, appNam
   const [rssData, lookupData, searchData] = await Promise.all([rssPromise, lookupPromise, searchPromise]);
 
   // 1. RSS 排行榜：拿到 ID 列表后用 getAppsByIds 批量查详情
-  if (rssData?.feed?.results) {
-    const appIds = rssData.feed.results
+  let appIds: string[] = [];
+  if (isLegacyRss && rssData?.feed?.entry) {
+    // 旧版 iTunes RSS 格式
+    appIds = rssData.feed.entry
+      .map((e: any) => e?.id?.attributes?.['im:id'])
+      .filter((id: string) => id && (!trackId || id !== String(trackId)));
+    console.log('[loadRankData] Legacy RSS entries:', rssData.feed.entry.length, '| IDs extracted:', appIds.length);
+  } else if (rssData?.feed?.results) {
+    // 新版 marketingtools RSS 格式
+    appIds = rssData.feed.results
       .map((r: any) => r.id)
       .filter((id: string) => !trackId || id !== String(trackId));
+    console.log('[loadRankData] New RSS results:', rssData.feed.results.length, '| IDs extracted:', appIds.length);
+  }
 
-    if (appIds.length > 0) {
-      try {
-        const batchUrl = `https://itunes.apple.com/lookup?id=${appIds.slice(0, 50).join(',')}&country=${country}`;
-        const batchResponse = await fetchViaProxy(batchUrl);
-        const batchData = await batchResponse.json();
-        if (batchData.results) {
-          for (const app of batchData.results) {
-            if (app.trackId && app.trackId !== trackId) {
-              allApps.set(String(app.trackId), app);
-            }
+  if (appIds.length > 0) {
+    try {
+      const batchUrl = `https://itunes.apple.com/lookup?id=${appIds.slice(0, 50).join(',')}&country=${country}`;
+      const batchResponse = await fetchViaProxy(batchUrl);
+      const batchData = await batchResponse.json();
+      if (batchData.results) {
+        for (const app of batchData.results) {
+          if (app.trackId && app.trackId !== trackId) {
+            allApps.set(String(app.trackId), app);
           }
         }
-      } catch (error) {
-        console.error('[loadRankData] RSS batch lookup failed:', error instanceof Error ? error.message : error);
       }
+    } catch (error) {
+      console.error('[loadRankData] RSS batch lookup failed:', error instanceof Error ? error.message : error);
     }
-    console.log('[loadRankData] RSS rank apps:', allApps.size);
   }
+  console.log('[loadRankData] RSS rank apps:', allApps.size);
 
   // 2. iTunes lookup 关联应用（只保留同类别）
   if (lookupData?.results) {
@@ -512,8 +532,8 @@ async function importScreenshots(app: any, device: string, country: string, star
 
   // Import iPhone screenshots
   if ((device === 'all' || device === 'iphone') && appDetails.screenshotUrls && appDetails.screenshotUrls.length > 0) {
-    const count = Math.min(appDetails.screenshotUrls.length, 5);
-    console.log('[importScreenshots] Loading iPhone screenshots:', count, '/', appDetails.screenshotUrls.length);
+    const count = appDetails.screenshotUrls.length;
+    console.log('[importScreenshots] Loading iPhone screenshots:', count);
 
     // Create section label
     try {
@@ -597,8 +617,8 @@ async function importScreenshots(app: any, device: string, country: string, star
 
   // Import iPad screenshots
   if ((device === 'all' || device === 'ipad') && appDetails.ipadScreenshotUrls && appDetails.ipadScreenshotUrls.length > 0) {
-    const count = Math.min(appDetails.ipadScreenshotUrls.length, 5);
-    console.log('[importScreenshots] Loading iPad screenshots:', count, '/', appDetails.ipadScreenshotUrls.length);
+    const count = appDetails.ipadScreenshotUrls.length;
+    console.log('[importScreenshots] Loading iPad screenshots:', count);
 
     // Create section label
     try {

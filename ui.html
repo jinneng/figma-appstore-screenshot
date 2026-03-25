@@ -424,6 +424,11 @@
       opacity: 1;
     }
 
+    .batch-import-btn:disabled.importing {
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
     .status {
       display: none;
       padding: 10px 14px;
@@ -520,11 +525,11 @@
         </div>
       </div>
 
-      <section class="rank-section" id="rankSection">
+      <section class="rank-section show" id="rankSection">
         <div class="sticky-filters">
           <div class="filter-group">
             <div style="display:flex;align-items:center;justify-content:space-between;">
-              <label>竞品榜单</label>
+              <label id="rankSectionTitle">榜单</label>
             </div>
             <div class="device-options rank-tabs">
               <button type="button" class="rank-tab active" data-rank="free">免费</button>
@@ -622,8 +627,15 @@
 
         if (!appName || appName.length < 2) {
           document.getElementById('searchResults').style.display = 'none';
-          document.getElementById('rankSection').classList.remove('show');
           document.getElementById('searchWrap').classList.remove('loading');
+          // 清空搜索时恢复默认热门榜单
+          if (searchedApp) {
+            searchedApp = null;
+            selectedApps.clear();
+            updateSelectedCount();
+            document.getElementById('rankSectionTitle').textContent = '榜单';
+            loadRankData();
+          }
           return;
         }
 
@@ -696,6 +708,7 @@
       document.body.classList.add('importing');
       const btn = document.getElementById('batchImportBtn');
       btn.disabled = true;
+      btn.classList.add('importing');
       btn.innerHTML = '<span class="spinner"></span>导入中...';
 
       parent.postMessage({
@@ -717,9 +730,9 @@
     // Load rank data
     function loadRankData() {
       const country = document.getElementById('country').value;
-      const genre = searchedApp?.primaryGenreId || 6005;
+      const genre = searchedApp?.primaryGenreId || 0;
 
-      showStatus('加载竞品榜单...', 'loading');
+      showStatus('加载榜单...', 'loading');
       document.getElementById('searchWrap').classList.add('loading');
 
       parent.postMessage({
@@ -765,12 +778,13 @@
         if (keepSearched) selectedApps.add(searchedApp);
         updateSelectedCount();
         displayRankList(rankApps);
-        showStatus(rankApps.length > 0 ? '' : '未找到竞品榜单', rankApps.length > 0 ? '' : 'error');
+        showStatus(rankApps.length > 0 ? '' : '未找到榜单数据', rankApps.length > 0 ? '' : 'error');
       }
 
       if (msg.type === 'import-complete') {
         console.log('[UI] Import complete — imported', msg.count, 'items');
         document.body.classList.remove('importing');
+        document.getElementById('batchImportBtn').classList.remove('importing');
         showStatus(`✓ 成功导入 ${msg.count} 个应用`, 'success');
         selectedApps.clear();
         updateSelectedCount();
@@ -780,6 +794,7 @@
       if (msg.type === 'error') {
         console.error('[UI] Plugin error:', msg.message);
         document.body.classList.remove('importing');
+        document.getElementById('batchImportBtn').classList.remove('importing');
         updateSelectedCount();
         showStatus('错误: ' + msg.message, 'error');
       }
@@ -790,10 +805,18 @@
       }
 
       if (msg.type === 'fetch-rss') {
-        console.log('[UI][fetch-rss] Fetching RSS via proxy:', msg.url);
+        console.log('[UI][fetch-rss] Fetching RSS:', msg.url);
         try {
-          const proxyUrl = `http://localhost:3456?url=${encodeURIComponent(msg.url)}`;
-          const response = await fetch(proxyUrl);
+          // 先尝试直接请求（Apple 公开 API）
+          let response;
+          try {
+            response = await fetch(msg.url);
+          } catch (directErr) {
+            // 直接请求失败，走 CF 代理
+            console.log('[UI][fetch-rss] Direct fetch failed, trying CF proxy');
+            const cfProxyUrl = `https://appstore-proxy.jinneng-tools.workers.dev/?url=${encodeURIComponent(msg.url)}`;
+            response = await fetch(cfProxyUrl);
+          }
           if (!response.ok) {
             console.warn('[UI][fetch-rss] HTTP', response.status);
             parent.postMessage({ pluginMessage: { type: 'rss-result', data: null } }, '*');
@@ -959,6 +982,7 @@
           const prevApp = searchedApp?.trackName ?? '(none)';
           searchedApp = app;
           document.getElementById('appName').value = app.trackName;
+          document.getElementById('rankSectionTitle').textContent = '榜单';
           selectedApps.clear();
           selectedApps.add(app);
           updateSelectedCount();
@@ -967,8 +991,7 @@
           // Hide search results dropdown
           document.getElementById('searchResults').style.display = 'none';
 
-          // Show rank section and load rank data
-          document.getElementById('rankSection').classList.add('show');
+          // Load rank data for selected app
           loadRankData();
         });
 
@@ -1086,6 +1109,10 @@
     }
 
     updateSelectedCount();
+
+    // 插件启动时自动加载默认榜单
+    loadRankData();
+
     console.log('[UI] All setup complete! Plugin UI ready.');
 
   } catch (error) {
