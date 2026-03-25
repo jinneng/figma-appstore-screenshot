@@ -469,6 +469,15 @@
       line-height: 1.5;
     }
 
+    body.importing .rank-item,
+    body.importing .rank-tab,
+    body.importing .device-btn,
+    body.importing #appName,
+    body.importing #countryInput {
+      pointer-events: none;
+      opacity: 0.45;
+    }
+
   </style>
 </head>
 <body>
@@ -684,6 +693,7 @@
       console.log('[UI][batchImport] Starting batch import —', appsToImport.length, 'apps, device:', selectedDevice, 'country:', document.getElementById('country').value);
       appsToImport.forEach((app, i) => console.log(`[UI][batchImport]   App ${i + 1}:`, app.trackName, '(trackId:', app.trackId + ')'));
       showStatus(`正在导入 ${appsToImport.length} 个应用...`, 'loading');
+      document.body.classList.add('importing');
       const btn = document.getElementById('batchImportBtn');
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span>导入中...';
@@ -760,6 +770,7 @@
 
       if (msg.type === 'import-complete') {
         console.log('[UI] Import complete — imported', msg.count, 'items');
+        document.body.classList.remove('importing');
         showStatus(`✓ 成功导入 ${msg.count} 个应用`, 'success');
         selectedApps.clear();
         updateSelectedCount();
@@ -768,6 +779,7 @@
 
       if (msg.type === 'error') {
         console.error('[UI] Plugin error:', msg.message);
+        document.body.classList.remove('importing');
         updateSelectedCount();
         showStatus('错误: ' + msg.message, 'error');
       }
